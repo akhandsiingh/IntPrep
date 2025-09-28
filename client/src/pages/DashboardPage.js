@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import { BarChart3, Clock, Target, TrendingUp, Play, ArrowLeft } from "lucide-react"
 import axios from "axios"
+import { API_BASE } from "../lib/config"
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get("/api/users/stats")
+        const response = await axios.get(`${API_BASE}/api/users/stats`)
         setStats(response.data)
       } catch (error) {
         console.error("Failed to fetch stats:", error)

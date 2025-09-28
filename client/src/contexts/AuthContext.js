@@ -10,6 +10,7 @@ import {
 } from "firebase/auth"
 import { auth } from "../config/firebase"
 import axios from "axios"
+import { API_BASE } from "../lib/config"
 
 const AuthContext = createContext()
 
@@ -59,7 +60,7 @@ export function AuthProvider({ children }) {
     try {
       const token = await user.getIdToken()
       await axios.post(
-        "/api/auth/profile",
+        `${API_BASE}/api/auth/profile`,
         {},
         {
           headers: {

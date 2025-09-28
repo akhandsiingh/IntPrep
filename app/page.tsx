@@ -1,7 +1,7 @@
 "use client"
 
-import  from "../client/src/index"
+import RootLayout from "layout"
 
 export default function SyntheticV0PageForDeployment() {
-  return < />
+  return <RootLayout />
 }

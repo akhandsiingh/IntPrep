@@ -5,6 +5,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../contexts/ToastContext"
 import { Clock, MessageSquare, ArrowRight, Pause, Play, Sparkles } from "lucide-react"
 import axios from "axios"
+import { API_BASE } from "../../lib/config"
 
 const formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60)
@@ -24,7 +25,7 @@ export default function InterviewSession({ config, onComplete }) {
   const [evaluatingAnswer, setEvaluatingAnswer] = useState(false)
   const [questionGenerationError, setQuestionGenerationError] = useState(false)
 
-  const { user } = useAuth()
+  const { currentUser } = useAuth()
   const { toast } = useToast()
 
   const hasInitializedForKeyRef = useRef(null)
@@ -34,7 +35,7 @@ export default function InterviewSession({ config, onComplete }) {
 
   // Enhanced question generation with better error handling and dynamic AI generation
   useEffect(() => {
-    if (!user?.uid) {
+    if (!currentUser?.uid) {
       // Wait until auth is ready before initializing
       return
     }
@@ -52,36 +53,37 @@ export default function InterviewSession({ config, onComplete }) {
         setLoading(true)
         setQuestionGenerationError(false)
 
-        // Set up axios defaults with auth token (kept global for other requests)
-        const token = await user.getIdToken()
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`
+        const token = await currentUser.getIdToken()
+        const authHeader = { Authorization: `Bearer ${token}` }
 
-        console.log("[v0] Starting interview initialization with config:", config)
-
-        // Create interview record
-        const interviewResponse = await axios.post("/api/interviews", {
-          ...config,
-          userId: user.uid,
-          startedAt: new Date(),
-          status: "in_progress",
-        })
+        const interviewResponse = await axios.post(
+          `${API_BASE}/api/interviews`,
+          {
+            ...config,
+            userId: currentUser.uid,
+            startedAt: new Date(),
+            status: "in_progress",
+          },
+          { headers: authHeader, timeout: 15000 },
+        )
 
         if (!isMounted) return
-        console.log("[v0] Interview created:", interviewResponse.data)
         setInterviewId(interviewResponse.data._id)
 
-        // Generate questions
-        const questionsResponse = await axios.post("/api/questions/generate", {
-          role: config.role,
-          experience: config.experience,
-          difficulty: config.difficulty,
-          count: Math.max(3, Math.ceil(config.duration / 6)),
-          seed: Date.now(),
-          previousAnswers: [],
-        })
+        const questionsResponse = await axios.post(
+          `${API_BASE}/api/questions/generate`,
+          {
+            role: config.role,
+            experience: config.experience,
+            difficulty: config.difficulty,
+            count: Math.max(3, Math.ceil(config.duration / 6)),
+            seed: Date.now(),
+            previousAnswers: [],
+          },
+          { headers: authHeader, timeout: 20000 },
+        )
 
         if (!isMounted) return
-        console.log("[v0] Questions generated:", questionsResponse.data)
 
         if (questionsResponse.data?.questions?.length > 0) {
           setQuestions(questionsResponse.data.questions)
@@ -93,17 +95,13 @@ export default function InterviewSession({ config, onComplete }) {
         setLoading(false)
       } catch (error) {
         if (!isMounted) return
-        console.error("[v0] Failed to initialize interview:", error)
         setQuestionGenerationError(true)
-
         const fallbackQuestions = generateFallbackQuestions(config)
         setQuestions(fallbackQuestions)
-
         if (!errorToastShownRef.current) {
           toast.error("AI question generation failed. Using backup questions.")
           errorToastShownRef.current = true
         }
-
         setLoading(false)
       }
     }
@@ -113,7 +111,7 @@ export default function InterviewSession({ config, onComplete }) {
     return () => {
       isMounted = false
     }
-  }, [configKey, user?.uid])
+  }, [configKey, currentUser?.uid])
 
   // Enhanced fallback question generation with more variety
   const generateFallbackQuestions = (config) => {
@@ -170,17 +168,19 @@ export default function InterviewSession({ config, onComplete }) {
     setEvaluatingAnswer(true)
 
     try {
-      console.log("[v0] Evaluating answer for question:", questions[currentQuestionIndex])
+      const token = await currentUser.getIdToken()
+      const authHeader = { Authorization: `Bearer ${token}` }
 
-      // Evaluate current answer using Gemini AI
-      const evaluationResponse = await axios.post("/api/questions/evaluate", {
-        question: questions[currentQuestionIndex],
-        answer: answer.trim(),
-        role: config.role,
-        experience: config.experience,
-      })
-
-      console.log("[v0] Answer evaluation received:", evaluationResponse.data)
+      const evaluationResponse = await axios.post(
+        `${API_BASE}/api/questions/evaluate`,
+        {
+          question: questions[currentQuestionIndex],
+          answer: answer.trim(),
+          role: config.role,
+          experience: config.experience,
+        },
+        { headers: authHeader, timeout: 15000 },
+      )
 
       const evaluation = evaluationResponse.data
       const newAnswer = {
@@ -197,45 +197,42 @@ export default function InterviewSession({ config, onComplete }) {
       const updatedAnswers = [...answers, newAnswer]
       setAnswers(updatedAnswers)
 
-      // Generate follow-up questions dynamically based on previous answers
       if (currentQuestionIndex < questions.length - 1) {
-        // Check if we should generate a follow-up question based on the answer
         if (evaluation.score >= 8 && updatedAnswers.length < Math.ceil(config.duration / 4)) {
           try {
-            const followUpResponse = await axios.post("/api/questions/generate", {
-              role: config.role,
-              experience: config.experience,
-              difficulty: config.difficulty,
-              count: 1,
-              previousAnswers: updatedAnswers.map((a) => ({
-                question: a.question,
-                answer: a.answer,
-                score: a.score,
-              })),
-              generateFollowUp: true,
-            })
-
+            const followUpResponse = await axios.post(
+              `${API_BASE}/api/questions/generate`,
+              {
+                role: config.role,
+                experience: config.experience,
+                difficulty: config.difficulty,
+                count: 1,
+                previousAnswers: updatedAnswers.map((a) => ({
+                  question: a.question,
+                  answer: a.answer,
+                  score: a.score,
+                })),
+                generateFollowUp: true,
+              },
+              { headers: authHeader, timeout: 15000 },
+            )
             if (followUpResponse.data.questions && followUpResponse.data.questions.length > 0) {
               const newQuestions = [...questions]
               newQuestions.splice(currentQuestionIndex + 1, 0, followUpResponse.data.questions[0])
               setQuestions(newQuestions)
-              console.log("[v0] Generated follow-up question:", followUpResponse.data.questions[0])
             }
           } catch (followUpError) {
-            console.log("[v0] Follow-up question generation failed, continuing with existing questions")
+            // intentionally silent, continue with existing questions
           }
         }
-
         setCurrentQuestionIndex(currentQuestionIndex + 1)
         setAnswer("")
       } else {
         await handleCompleteInterview(updatedAnswers)
       }
     } catch (error) {
-      console.error("[v0] Failed to evaluate answer:", error)
       toast.error("Failed to evaluate answer, but continuing interview.")
 
-      // Continue without evaluation
       const newAnswer = {
         question: questions[currentQuestionIndex],
         answer: answer.trim(),
@@ -264,22 +261,24 @@ export default function InterviewSession({ config, onComplete }) {
   // Enhanced interview completion with comprehensive AI feedback
   const handleCompleteInterview = async (finalAnswers = answers) => {
     try {
-      console.log("[v0] Completing interview with answers:", finalAnswers)
-
       const averageScore =
         finalAnswers.length > 0 ? finalAnswers.reduce((sum, a) => sum + (a.score || 7), 0) / finalAnswers.length : 7
 
-      // Generate comprehensive feedback using AI
-      const feedbackResponse = await axios.post("/api/questions/feedback", {
-        questions: finalAnswers.map((a) => a.question),
-        answers: finalAnswers.map((a) => a.answer),
-        role: config.role,
-        experience: config.experience,
-        overallScore: averageScore,
-        individualScores: finalAnswers.map((a) => a.score || 7),
-      })
+      const token = await currentUser.getIdToken()
+      const authHeader = { Authorization: `Bearer ${token}` }
 
-      console.log("[v0] Comprehensive feedback received:", feedbackResponse.data)
+      const feedbackResponse = await axios.post(
+        `${API_BASE}/api/questions/feedback`,
+        {
+          questions: finalAnswers.map((a) => a.question),
+          answers: finalAnswers.map((a) => a.answer),
+          role: config.role,
+          experience: config.experience,
+          overallScore: averageScore,
+          individualScores: finalAnswers.map((a) => a.score || 7),
+        },
+        { headers: authHeader, timeout: 20000 },
+      )
 
       const comprehensiveFeedback = feedbackResponse.data
 
@@ -293,10 +292,11 @@ export default function InterviewSession({ config, onComplete }) {
         config: config,
       }
 
-      // Update interview record
       if (interviewId) {
-        await axios.put(`/api/interviews/${interviewId}`, interviewData)
-        console.log("[v0] Interview record updated successfully")
+        await axios.put(`${API_BASE}/api/interviews/${interviewId}`, interviewData, {
+          headers: authHeader,
+          timeout: 15000,
+        })
       }
 
       toast.success("Interview completed successfully!")
@@ -306,10 +306,8 @@ export default function InterviewSession({ config, onComplete }) {
         ...interviewData,
       })
     } catch (error) {
-      console.error("[v0] Failed to complete interview:", error)
       toast.error("Failed to save interview results, but your answers were recorded.")
 
-      // Still complete the interview with basic data
       onComplete({
         ...config,
         questions: finalAnswers,
