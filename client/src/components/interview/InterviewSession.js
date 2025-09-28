@@ -1,8 +1,16 @@
-import { useState, useEffect } from "react"
+"use client"
+
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useToast } from "../../contexts/ToastContext"
-import { Clock, MessageSquare, ArrowRight, Pause, Play, Sparkles } from 'lucide-react'
+import { Clock, MessageSquare, ArrowRight, Pause, Play, Sparkles } from "lucide-react"
 import axios from "axios"
+
+const formatTime = (seconds) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}m ${secs.toString().padStart(2, "0")}s`
+}
 
 export default function InterviewSession({ config, onComplete }) {
   const [questions, setQuestions] = useState([])
@@ -19,16 +27,34 @@ export default function InterviewSession({ config, onComplete }) {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // <CHANGE> Enhanced question generation with better error handling and dynamic AI generation
+  const hasInitializedForKeyRef = useRef(null)
+  const errorToastShownRef = useRef(false)
+  // Build a stable key for the current interview config
+  const configKey = `${config.role}|${config.experience}|${config.difficulty}|${config.duration}`
+
+  // Enhanced question generation with better error handling and dynamic AI generation
   useEffect(() => {
+    if (!user?.uid) {
+      // Wait until auth is ready before initializing
+      return
+    }
+
+    // Prevent re-initializing for the same config
+    if (hasInitializedForKeyRef.current === configKey) {
+      return
+    }
+    hasInitializedForKeyRef.current = configKey
+
+    let isMounted = true
+
     const initializeInterview = async () => {
       try {
         setLoading(true)
         setQuestionGenerationError(false)
 
-        // Set up axios defaults with auth token
+        // Set up axios defaults with auth token (kept global for other requests)
         const token = await user.getIdToken()
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`
 
         console.log("[v0] Starting interview initialization with config:", config)
 
@@ -37,26 +63,27 @@ export default function InterviewSession({ config, onComplete }) {
           ...config,
           userId: user.uid,
           startedAt: new Date(),
-          status: "in_progress"
+          status: "in_progress",
         })
-        
+
+        if (!isMounted) return
         console.log("[v0] Interview created:", interviewResponse.data)
         setInterviewId(interviewResponse.data._id)
 
-        // <CHANGE> Generate dynamic questions with enhanced parameters for variety
+        // Generate questions
         const questionsResponse = await axios.post("/api/questions/generate", {
           role: config.role,
           experience: config.experience,
           difficulty: config.difficulty,
-          count: Math.max(3, Math.ceil(config.duration / 6)), // At least 3 questions, roughly 6 minutes per question
-          // Add randomization seed based on current time to ensure different questions each time
+          count: Math.max(3, Math.ceil(config.duration / 6)),
           seed: Date.now(),
-          previousAnswers: [], // Start with empty array, will be populated for follow-up questions
+          previousAnswers: [],
         })
 
+        if (!isMounted) return
         console.log("[v0] Questions generated:", questionsResponse.data)
-        
-        if (questionsResponse.data.questions && questionsResponse.data.questions.length > 0) {
+
+        if (questionsResponse.data?.questions?.length > 0) {
           setQuestions(questionsResponse.data.questions)
           toast.success(`Generated ${questionsResponse.data.questions.length} personalized questions!`)
         } else {
@@ -65,29 +92,37 @@ export default function InterviewSession({ config, onComplete }) {
 
         setLoading(false)
       } catch (error) {
+        if (!isMounted) return
         console.error("[v0] Failed to initialize interview:", error)
         setQuestionGenerationError(true)
-        
-        // <CHANGE> Enhanced fallback with more variety
+
         const fallbackQuestions = generateFallbackQuestions(config)
         setQuestions(fallbackQuestions)
-        
-        toast.error("AI question generation failed. Using backup questions.")
+
+        if (!errorToastShownRef.current) {
+          toast.error("AI question generation failed. Using backup questions.")
+          errorToastShownRef.current = true
+        }
+
         setLoading(false)
       }
     }
 
     initializeInterview()
-  }, [config, user, toast])
 
-  // <CHANGE> Enhanced fallback question generation with more variety
+    return () => {
+      isMounted = false
+    }
+  }, [configKey, user?.uid])
+
+  // Enhanced fallback question generation with more variety
   const generateFallbackQuestions = (config) => {
     const baseQuestions = [
       `Tell me about yourself and why you're interested in the ${config.role} position.`,
       `What experience do you have that makes you suitable for this ${config.role} role?`,
       "Describe a challenging project you worked on and how you overcame the obstacles.",
       "How do you stay updated with the latest trends and technologies in your field?",
-      "Tell me about a time when you had to work under pressure. How did you handle it?"
+      "Tell me about a time when you had to work under pressure. How did you handle it?",
     ]
 
     const roleSpecificQuestions = {
@@ -95,39 +130,37 @@ export default function InterviewSession({ config, onComplete }) {
         "Explain the difference between synchronous and asynchronous programming.",
         "How do you approach debugging a complex issue in your code?",
         "Describe your experience with version control systems like Git.",
-        "What's your preferred development methodology and why?"
+        "What's your preferred development methodology and why?",
       ],
       "Frontend Developer": [
         "How do you ensure cross-browser compatibility in your applications?",
         "Explain the concept of responsive design and how you implement it.",
         "What's your approach to optimizing web performance?",
-        "How do you handle state management in complex applications?"
+        "How do you handle state management in complex applications?",
       ],
       "Backend Developer": [
         "How do you design scalable APIs?",
         "Explain database indexing and its importance for performance.",
         "Describe your experience with microservices architecture.",
-        "How do you handle security in backend applications?"
+        "How do you handle security in backend applications?",
       ],
       "Data Scientist": [
         "How do you handle missing data in datasets?",
         "Explain the bias-variance tradeoff in machine learning.",
         "Describe your approach to feature selection and engineering.",
-        "How do you validate and test your machine learning models?"
-      ]
+        "How do you validate and test your machine learning models?",
+      ],
     }
 
     const specificQuestions = roleSpecificQuestions[config.role] || []
     const allQuestions = [...baseQuestions, ...specificQuestions]
-    
+
     // Shuffle and return appropriate number of questions
     const shuffled = allQuestions.sort(() => 0.5 - Math.random())
     return shuffled.slice(0, Math.max(3, Math.ceil(config.duration / 6)))
   }
 
-  // ... existing code ...
-
-  // <CHANGE> Enhanced answer handling with better AI evaluation and follow-up question generation
+  // Enhanced answer handling with better AI evaluation and follow-up question generation
   const handleNextQuestion = async () => {
     if (!answer.trim()) {
       toast.error("Please provide an answer before proceeding.")
@@ -158,13 +191,13 @@ export default function InterviewSession({ config, onComplete }) {
         feedback: evaluation.feedback || "Good answer provided.",
         strengths: evaluation.strengths || ["Answer provided"],
         improvements: evaluation.improvements || ["Consider adding more detail"],
-        timestamp: new Date()
+        timestamp: new Date(),
       }
 
       const updatedAnswers = [...answers, newAnswer]
       setAnswers(updatedAnswers)
 
-      // <CHANGE> Generate follow-up questions dynamically based on previous answers
+      // Generate follow-up questions dynamically based on previous answers
       if (currentQuestionIndex < questions.length - 1) {
         // Check if we should generate a follow-up question based on the answer
         if (evaluation.score >= 8 && updatedAnswers.length < Math.ceil(config.duration / 4)) {
@@ -174,12 +207,12 @@ export default function InterviewSession({ config, onComplete }) {
               experience: config.experience,
               difficulty: config.difficulty,
               count: 1,
-              previousAnswers: updatedAnswers.map(a => ({
+              previousAnswers: updatedAnswers.map((a) => ({
                 question: a.question,
                 answer: a.answer,
-                score: a.score
+                score: a.score,
               })),
-              generateFollowUp: true
+              generateFollowUp: true,
             })
 
             if (followUpResponse.data.questions && followUpResponse.data.questions.length > 0) {
@@ -201,7 +234,7 @@ export default function InterviewSession({ config, onComplete }) {
     } catch (error) {
       console.error("[v0] Failed to evaluate answer:", error)
       toast.error("Failed to evaluate answer, but continuing interview.")
-      
+
       // Continue without evaluation
       const newAnswer = {
         question: questions[currentQuestionIndex],
@@ -211,7 +244,7 @@ export default function InterviewSession({ config, onComplete }) {
         feedback: "Answer recorded successfully.",
         strengths: ["Answer provided"],
         improvements: ["Consider adding more specific examples"],
-        timestamp: new Date()
+        timestamp: new Date(),
       }
 
       const updatedAnswers = [...answers, newAnswer]
@@ -228,14 +261,13 @@ export default function InterviewSession({ config, onComplete }) {
     }
   }
 
-  // <CHANGE> Enhanced interview completion with comprehensive AI feedback
+  // Enhanced interview completion with comprehensive AI feedback
   const handleCompleteInterview = async (finalAnswers = answers) => {
     try {
       console.log("[v0] Completing interview with answers:", finalAnswers)
 
-      const averageScore = finalAnswers.length > 0 
-        ? finalAnswers.reduce((sum, a) => sum + (a.score || 7), 0) / finalAnswers.length 
-        : 7
+      const averageScore =
+        finalAnswers.length > 0 ? finalAnswers.reduce((sum, a) => sum + (a.score || 7), 0) / finalAnswers.length : 7
 
       // Generate comprehensive feedback using AI
       const feedbackResponse = await axios.post("/api/questions/feedback", {
@@ -244,7 +276,7 @@ export default function InterviewSession({ config, onComplete }) {
         role: config.role,
         experience: config.experience,
         overallScore: averageScore,
-        individualScores: finalAnswers.map(a => a.score || 7)
+        individualScores: finalAnswers.map((a) => a.score || 7),
       })
 
       console.log("[v0] Comprehensive feedback received:", feedbackResponse.data)
@@ -258,7 +290,7 @@ export default function InterviewSession({ config, onComplete }) {
         overallScore: averageScore,
         feedback: comprehensiveFeedback,
         timeSpent: config.duration * 60 - timeRemaining,
-        config: config
+        config: config,
       }
 
       // Update interview record
@@ -268,7 +300,7 @@ export default function InterviewSession({ config, onComplete }) {
       }
 
       toast.success("Interview completed successfully!")
-      
+
       onComplete({
         ...config,
         ...interviewData,
@@ -276,21 +308,18 @@ export default function InterviewSession({ config, onComplete }) {
     } catch (error) {
       console.error("[v0] Failed to complete interview:", error)
       toast.error("Failed to save interview results, but your answers were recorded.")
-      
+
       // Still complete the interview with basic data
       onComplete({
         ...config,
         questions: finalAnswers,
         status: "completed",
-        overallScore: finalAnswers.length > 0 
-          ? finalAnswers.reduce((sum, a) => sum + (a.score || 7), 0) / finalAnswers.length 
-          : 7,
+        overallScore:
+          finalAnswers.length > 0 ? finalAnswers.reduce((sum, a) => sum + (a.score || 7), 0) / finalAnswers.length : 7,
         timeSpent: config.duration * 60 - timeRemaining,
       })
     }
   }
-
-  // ... existing code ...
 
   if (loading) {
     return (
@@ -318,10 +347,9 @@ export default function InterviewSession({ config, onComplete }) {
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h3 className="text-lg font-semibold mb-2">Unable to Generate Questions</h3>
           <p className="text-gray-600 mb-4">
-            {questionGenerationError 
+            {questionGenerationError
               ? "AI question generation failed. Please check your internet connection and try again."
-              : "No questions were generated. Please try again."
-            }
+              : "No questions were generated. Please try again."}
           </p>
           <button
             onClick={() => window.location.reload()}
