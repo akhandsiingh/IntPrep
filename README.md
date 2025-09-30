@@ -7,8 +7,6 @@
 ## 🚀 Features
 
 - **AI-Powered Interview Questions**: Smart follow-ups based on your responses using Google Gemini AI  
-- **Voice Recognition**: Real-time speech-to-text for natural practice  
-- **Text-to-Speech**: Listen to questions read aloud by AI  
 - **Detailed Feedback**: Get actionable insights on your interview performance  
 - **Firebase Authentication**: Secure login with email/password or Google  
 - **Interview Types**: General, Technical, and Behavioral sessions  
