@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "npm build",
-    "dev": "npm dev",
-    "lint": "npm lint",
-    "start": "npm start"
+    "build": "npm run build",
+    "dev": "npm run dev",
+    "lint": "npm run lint",
+    "start": "npm run start"
   },
   "dependencies": {
     "@ai-sdk/google": "latest",
