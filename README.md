@@ -31,27 +31,6 @@
 
 ---
 
-## 📁 Project Structure
-intprep/
-├── client/ # React frontend
-│ ├── src/
-│ │ ├── components/ # UI components
-│ │ ├── contexts/ # React context (Auth)
-│ │ ├── pages/ # Page components
-│ │ ├── services/ # API service layer
-│ │ ├── config/ # Firebase config
-│ │ ├── utils/ # Utility functions
-│ │ └── types/ # TypeScript types
-│ ├── public/
-│ └── package.json
-│
-└── server/ # Express backend
-├── server.js # Main server file
-├── package.json
-└── .env.example # Environment variables template
-
----
-
 ## ⚡ Setup Instructions
 
 ### Prerequisites
