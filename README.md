@@ -1,86 +1,116 @@
-# IntPrep - AI-Powered Interview Practice Platform
+# IntPrep - AI Interview Practice Platform
 
-**IntPrep** is a full-stack application that helps users practice interviews using AI. It leverages Google Gemini AI for intelligent question generation, real-time voice recognition, and detailed feedback on performance. Built with React, Node.js, Express, Firebase, and modern web technologies.
+IntPrep is a full-stack AI-powered interview practice application built with React, Express, Node.js, Firebase Authentication, and Google Gemini AI.
 
----
+## Features
 
-## 🚀 Features
+- **AI-Powered Interview Questions**: Get intelligent follow-up questions based on your responses using Google Gemini AI
+- **Voice Recognition**: Practice speaking naturally with real-time voice-to-text transcription
+- **Text-to-Speech**: Listen to interview questions read aloud by AI
+- **Detailed Feedback**: Receive comprehensive analysis of your interview performance with actionable insights
+- **Firebase Authentication**: Secure user authentication with email/password and Google sign-in
+- **Interview Types**: Choose from General, Technical, or Behavioral interview practice sessions
 
-- **AI-Powered Interview Questions**: Smart follow-ups based on your responses using Google Gemini AI  
-- **Detailed Feedback**: Get actionable insights on your interview performance  
-- **Firebase Authentication**: Secure login with email/password or Google  
-- **Interview Types**: General, Technical, and Behavioral sessions  
-
----
-
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
-- React 18 + Vite  
-- Tailwind CSS  
-- React Router  
-- Axios  
-- Lucide React (icons)  
-- Firebase SDK  
+- React 18
+- Vite
+- React Router
+- Axios
+- Tailwind CSS
+- Lucide React (icons)
+- Firebase SDK
 
 ### Backend
-- Node.js + Express  
-- Google Gemini AI SDK  
-- Firebase Admin SDK  
-- CORS  
+- Node.js
+- Express
+- Google Generative AI SDK (Gemini)
+- Firebase Admin SDK
+- CORS
 
----
+## Project Structure
 
-## 📁 Project Structure
+\`\`\`
 intprep/
-├── client/ # React frontend
-│ ├── src/
-│ │ ├── components/ # UI components
-│ │ ├── contexts/ # React context (Auth)
-│ │ ├── pages/ # Page components
-│ │ ├── services/ # API service layer
-│ │ ├── config/ # Firebase config
-│ │ ├── utils/ # Utility functions
-│ │ └── types/ # TypeScript types
-│ ├── public/
-│ └── package.json
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── contexts/      # React contexts (Auth)
+│   │   ├── pages/         # Page components
+│   │   ├── services/      # API service layer
+│   │   ├── config/        # Firebase config
+│   │   ├── utils/         # Utility functions
+│   │   └── types/         # TypeScript definitions
+│   ├── public/
+│   └── package.json
 │
-└── server/ # Express backend
-├── server.js # Main server file
-├── package.json
-└── .env.example # Environment variables template
+└── server/                # Express backend
+    ├── server.js          # Main server file
+    ├── package.json
+    └── .env.example
+\`\`\`
 
----
-
-## ⚡ Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
-- Node.js v16+  
-- npm or pnpm  
-- Firebase project  
-- Google Gemini API key  
-
----
+- Node.js (v16 or higher)
+- npm or pnpm
+- Firebase project
+- Google Gemini API key
 
 ### Backend Setup
 
-```bash
+1. Navigate to the server directory:
+\`\`\`bash
 cd server
-npm install
-cp .env.example .env
+\`\`\`
 
-.env
+2. Install dependencies:
+\`\`\`bash
+npm install
+\`\`\`
+
+3. Create a `.env` file based on `.env.example`:
+\`\`\`bash
+cp .env.example .env
+\`\`\`
+
+4. Add your environment variables to `.env`:
+\`\`\`
 PORT=5000
-GEMINI_API_KEY=your_gemini_api_key
+GEMINI_API_KEY=your_gemini_api_key_here
 FIREBASE_PROJECT_ID=your_firebase_project_id
 FIREBASE_CLIENT_EMAIL=your_firebase_client_email
 FIREBASE_PRIVATE_KEY=your_firebase_private_key
+\`\`\`
 
+5. Start the server:
+\`\`\`bash
 npm run dev
+\`\`\`
 
+The server will run on `http://localhost:5000`
+
+### Frontend Setup
+
+1. Navigate to the client directory:
+\`\`\`bash
 cd client
+\`\`\`
+
+2. Install dependencies:
+\`\`\`bash
 npm install
+\`\`\`
+
+3. Create a `.env` file based on `.env.example`:
+\`\`\`bash
 cp .env.example .env
+\`\`\`
+
+4. Add your environment variables to `.env`:
+\`\`\`
 VITE_API_URL=http://localhost:5000
 VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
@@ -88,50 +118,55 @@ VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
 VITE_FIREBASE_APP_ID=your_firebase_app_id
+\`\`\`
+
+5. Start the development server:
+\`\`\`bash
 npm run dev
-🔑 Firebase Setup
+\`\`\`
 
-Create a Firebase project: Firebase Console
+The app will run on `http://localhost:3000`
 
-Enable Authentication (Email/Password + Google Sign-in)
+## Firebase Setup
 
-Get Firebase config from Project Settings
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable Authentication with Email/Password and Google sign-in
+3. Get your Firebase configuration from Project Settings
+4. For the backend, download the service account key JSON file
+5. Add the Firebase credentials to your `.env` files
 
-Download service account JSON for backend
+## Google Gemini API Setup
 
-Add credentials to .env files
+1. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Add the API key to your server `.env` file
 
-🤖 Google Gemini API Setup
+## Usage
 
-Get API key: Google AI Studio
+1. Start both the backend server and frontend development server
+2. Open `http://localhost:3000` in your browser
+3. Sign up or log in with your credentials
+4. Fill out the interview setup form
+5. Start practicing your interview with AI-powered questions and feedback
 
-Add the key to server/.env
+## API Endpoints
 
-🎯 Usage
+- `GET /api/health` - Health check endpoint
+- `POST /api/generate-questions` - Generate follow-up questions based on transcript
+- `POST /api/answer-question` - Get AI-generated answers to questions
+- `POST /api/analyze-session` - Analyze interview session and provide feedback
+- `GET /api/models` - Get available Gemini models
 
-Start backend and frontend servers
+## Browser Compatibility
 
-Open http://localhost:3000
+- Chrome (recommended for best speech recognition support)
+- Edge
+- Safari
+- Firefox (limited speech recognition support)
 
-Sign up / log in
+## License
 
-Choose interview type
+MIT
 
-Start practicing with AI-powered questions and feedback
+## Contributing
 
-📌 Future Improvements
-
-Voice based input output(TTS and STT)
-
-Multi-language support
-
-Interview analytics dashboard
-
-Export interview sessions as PDF
-
-Integration with other AI models
-
-
-
-
-
+Contributions are welcome! Please feel free to submit a Pull Request.
