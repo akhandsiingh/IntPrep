@@ -1,3 +1,4 @@
+
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
@@ -166,8 +167,7 @@ app.post("/api/submit-answer", async (req, res) => {
 
     const questionCount = conversationHistory.filter((msg) => msg.role === "assistant").length
 
-    // Determine if interview should end (after 5-7 questions)
-    const shouldEnd = questionCount >= 6
+    const shouldEnd = questionCount >= 10
 
     let prompt = ""
 
@@ -225,26 +225,39 @@ Return your response in this exact JSON format:
 }`
     }
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    try {
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const text = response.text()
 
-    // Parse JSON response
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      const parsedResponse = JSON.parse(jsonMatch[0])
-      res.json(parsedResponse)
-    } else {
-      // Fallback if JSON parsing fails
+      // Parse JSON response with better error handling
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsedResponse = JSON.parse(jsonMatch[0])
+        res.json(parsedResponse)
+      } else {
+        // Fallback if JSON parsing fails
+        res.json({
+          feedback: "Thank you for your answer.",
+          nextQuestion: shouldEnd ? null : "Can you tell me more about your experience?",
+          isComplete: shouldEnd,
+        })
+      }
+    } catch (apiError) {
+      console.error("API Error in submit-answer:", apiError.message)
       res.json({
-        feedback: "Thank you for your answer.",
+        feedback: "Thank you for your response.",
         nextQuestion: shouldEnd ? null : "Can you tell me more about your experience?",
         isComplete: shouldEnd,
       })
     }
   } catch (error) {
     console.error("Error processing answer:", error)
-    res.status(500).json({ error: "Failed to process answer" })
+    res.json({
+      feedback: "Thank you for your response.",
+      nextQuestion: null,
+      isComplete: true,
+    })
   }
 })
 
@@ -270,36 +283,136 @@ Candidate Profile:
 Complete Interview Conversation:
 ${conversationContext}
 
-Provide comprehensive interview feedback in the following format:
+Provide a detailed interview score out of 10 based on:
+- Communication Clarity (2 points): How clear and articulate were the responses?
+- Relevance (2 points): How well did answers relate to the questions asked?
+- Experience & Examples (2 points): Did they provide specific examples and demonstrate real experience?
+- Professionalism (2 points): How professional and appropriate was their demeanor?
+- Problem-Solving (1 point): Did they show critical thinking where applicable?
+- Overall Fit (1 point): Do they seem like a good fit for the ${interviewData.position} role?
 
-STRENGTHS: [List 3-4 specific positive aspects of their responses, communication style, and relevant experience mentioned]
+Then provide comprehensive feedback in the following format:
 
-AREAS FOR IMPROVEMENT: [List 3-4 specific suggestions for better interview performance, including structure, content, and delivery]
+OVERALL SCORE: [Provide score out of 10]
 
-KEY OBSERVATIONS: [List 2-3 notable patterns, behaviors, or standout moments from the interview]
+STRENGTHS: [List 3-4 specific positive aspects of their responses]
 
-INTERVIEW SCORE: [Provide a score out of 100 based on: clarity (25%), relevance (25%), examples/specifics (25%), professionalism (25%)]
+AREAS FOR IMPROVEMENT: [List 3-4 specific suggestions for better performance]
 
-RECOMMENDATION: [Provide a brief recommendation on whether to proceed with this candidate]
+KEY OBSERVATIONS: [List 2-3 notable patterns or standout moments]
 
-Focus on practical, actionable feedback that will help them improve their interview skills.`
+RECOMMENDATION: [Brief recommendation on whether to proceed]`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
+    try {
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const text = response.text()
 
-    let score = null
-    const scoreMatch = text.match(/INTERVIEW SCORE:\s*(\d+)/i)
-    if (scoreMatch) {
-      score = Number.parseInt(scoreMatch[1])
+      let score = null
+      const scoreMatch = text.match(/OVERALL SCORE:\s*(\d+(?:\.\d+)?)\s*(?:\/10)?/i)
+      if (scoreMatch) {
+        score = Math.min(10, Math.max(0, Number.parseFloat(scoreMatch[1])))
+      } else {
+        // Fallback: Extract from out of 100 format for backwards compatibility
+        const scoreMatch100 = text.match(/INTERVIEW SCORE:\s*(\d+)/i)
+        if (scoreMatch100) {
+          score = Math.round(Number.parseFloat(scoreMatch100[1]) / 10)
+        }
+      }
+
+      if (!score) {
+        score = calculateFallbackScore(conversationHistory)
+      }
+
+      res.json({ analysis: text, score })
+    } catch (apiError) {
+      console.error("API Error in analyze-session:", apiError.message)
+      const fallbackScore = calculateFallbackScore(conversationHistory)
+      const fallbackAnalysis = generateFallbackAnalysis(conversationHistory, interviewData, fallbackScore)
+      res.json({ analysis: fallbackAnalysis, score: fallbackScore })
     }
-
-    res.json({ analysis: text, score })
   } catch (error) {
     console.error("Error analyzing session:", error)
-    res.status(500).json({ error: "Failed to analyze session" })
+    const fallbackScore = calculateFallbackScore(req.body.conversationHistory || [])
+    const fallbackAnalysis = generateFallbackAnalysis(
+      req.body.conversationHistory || [],
+      req.body.interviewData || {},
+      fallbackScore,
+    )
+    res.json({ analysis: fallbackAnalysis, score: fallbackScore })
   }
 })
+
+function calculateFallbackScore(conversationHistory) {
+  const userResponses = conversationHistory.filter((msg) => msg.role === "user")
+  const questionCount = conversationHistory.filter((msg) => msg.role === "assistant").length
+
+  if (userResponses.length === 0) {
+    return 1
+  }
+
+  // Calculate average response quality
+  let score = 2 // Base score starts lower
+  const totalLength = userResponses.reduce((sum, msg) => sum + msg.content.length, 0)
+  const avgLength = totalLength / userResponses.length
+
+  // Add points only for substantive responses
+  if (avgLength > 50) score += 1 // Basic effort
+  if (avgLength > 150) score += 1.5 // Good detail
+  if (avgLength > 300) score += 2 // Excellent detail
+  if (userResponses.length > 3) score += 1 // Multiple questions
+  if (userResponses.length > 6) score += 1.5 // Many questions
+
+  return Math.min(10, Math.max(1, score))
+}
+
+function generateFallbackAnalysis(conversationHistory, interviewData, score) {
+  const userResponses = conversationHistory.filter((msg) => msg.role === "user")
+  const questionCount = conversationHistory.filter((msg) => msg.role === "assistant").length
+  const totalLength = userResponses.reduce((sum, msg) => sum + msg.content.length, 0)
+  const avgLength = Math.round(totalLength / Math.max(userResponses.length, 1))
+
+  let strengths = "- Showed up and attempted the interview"
+  let improvements = ""
+  let observations = ""
+  let recommendation = "Review feedback to improve for next interview"
+
+  if (userResponses.length === 1) {
+    strengths = "- Initiated the interview process"
+    improvements = `- Responses were very brief (average ${avgLength} characters). Provide detailed answers with examples\n- Expand on each question to demonstrate knowledge and experience\n- Give context, challenges faced, and outcomes in your answers`
+    observations = `- Only 1 response provided\n- Limited information to evaluate interview performance\n- Need more engagement to properly assess candidacy`
+    recommendation = "Provide more detailed responses to showcase your qualifications"
+  } else if (userResponses.length <= 3) {
+    strengths = `- Provided ${userResponses.length} responses to interview questions`
+    improvements = `- Average response length of ${avgLength} characters is relatively brief\n- Include specific examples and measurable outcomes\n- Demonstrate how your experience relates to the ${interviewData.position} role`
+    observations = `- Completed ${userResponses.length} out of expected questions\n- Responses lacked depth in some areas\n- Limited examples provided to support answers`
+    recommendation = "Practice providing structured, detailed responses with concrete examples"
+  } else if (userResponses.length <= 6) {
+    strengths = `- Engaged with ${userResponses.length} questions showing commitment\n- Average response length of ${avgLength} characters shows effort\n- Demonstrated willingness to articulate experience`
+    improvements = `- Enhance responses with specific metrics and outcomes\n- Provide more context about challenges and solutions\n- Connect experiences directly to the ${interviewData.position} role requirements`
+    observations = `- Completed ${userResponses.length} interview questions\n- Moderate level of detail in responses\n- Some responses could benefit from more specific examples`
+    recommendation = "Strengthen interview skills by preparing concrete examples and using the STAR method"
+  } else {
+    strengths = `- Strong participation completing ${userResponses.length} questions\n- Average response length of ${avgLength} characters shows comprehensive thinking\n- Demonstrated engagement throughout the interview`
+    improvements = `- Review technical depth for ${interviewData.position} specific skills\n- Consider preparing more quantifiable achievements\n- Practice concise delivery while maintaining detail`
+    observations = `- Successfully completed full interview with ${questionCount} questions asked\n- Consistent engagement and response quality\n- Good overall communication demonstrated`
+    recommendation = "Strong interview performance. Continue practicing to refine technical knowledge"
+  }
+
+  return `OVERALL SCORE: ${score.toFixed(1)}/10
+
+STRENGTHS:
+${strengths}
+
+AREAS FOR IMPROVEMENT:
+${improvements}
+
+KEY OBSERVATIONS:
+${observations}
+
+RECOMMENDATION:
+${recommendation}`
+}
 
 // List available Gemini models endpoint
 app.get("/api/models", async (req, res) => {
