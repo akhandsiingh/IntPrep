@@ -4,29 +4,54 @@
 
 @layer base {
   :root {
-    /* Updated to modern dark theme inspired by design references */
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263 70% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 263 70% 50%;
-    --accent-foreground: 0 0% 100%;
+    /* New modern cyan color scheme - clean and professional, not AI-generic */
+    /* Dark mode as primary with cyan accents */
+    --background: 200 40% 8%;
+    --foreground: 200 10% 95%;
+    --card: 200 30% 12%;
+    --card-foreground: 200 10% 95%;
+    --popover: 200 30% 12%;
+    --popover-foreground: 200 10% 95%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 2%;
+    --secondary: 200 20% 15%;
+    --secondary-foreground: 200 10% 90%;
+    --muted: 200 15% 25%;
+    --muted-foreground: 200 8% 65%;
+    --accent: 180 95% 48%;
+    --accent-foreground: 0 0% 2%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 263 70% 50%;
-    --radius: 0.75rem;
+    --border: 200 25% 22%;
+    --input: 200 35% 16%;
+    --ring: 180 100% 50%;
+    --radius: 0.5rem;
     --success: 142 76% 36%;
     --warning: 38 92% 50%;
+
+    /* Typography scale for clean design */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+  }
+
+  /* Light mode variant */
+  [data-theme="light"] {
+    --background: 0 0% 98%;
+    --foreground: 200 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 200 20% 10%;
+    --secondary: 200 15% 90%;
+    --secondary-foreground: 200 20% 10%;
+    --muted: 200 10% 75%;
+    --muted-foreground: 200 10% 40%;
+    --border: 200 20% 88%;
+    --input: 200 15% 93%;
   }
 }
 
@@ -34,15 +59,160 @@
   * {
     @apply border-border;
   }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    letter-spacing: -0.3px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-4xl;
+  }
+
+  h2 {
+    @apply text-3xl;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  h4 {
+    @apply text-xl;
+  }
+
+  p {
+    @apply text-foreground/80;
+  }
+
+  button,
+  [role="button"] {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply bg-input text-foreground placeholder:text-muted-foreground;
+    @apply border border-border rounded-lg;
+    @apply focus:ring-2 focus:ring-accent focus:border-accent outline-none;
   }
 }
 
-/* Added gradient text utility */
-@layer utilities {
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent;
+/* Clean utility classes for modern design */
+@layer components {
+  .btn-primary {
+    @apply px-6 py-2.5 bg-accent text-accent-foreground rounded-lg font-medium;
+    @apply hover:bg-cyan-600 active:scale-95;
+    @apply transition-all duration-150;
   }
+
+  .btn-secondary {
+    @apply px-6 py-2.5 bg-secondary text-secondary-foreground rounded-lg font-medium;
+    @apply hover:bg-secondary/80 border border-border;
+    @apply transition-all duration-150;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 text-foreground hover:bg-secondary rounded-lg;
+    @apply transition-all duration-150;
+  }
+
+  .card-base {
+    @apply bg-card text-card-foreground rounded-xl;
+    @apply border border-border;
+    @apply shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .input-base {
+    @apply w-full px-4 py-2.5 bg-input text-foreground;
+    @apply border border-border rounded-lg;
+    @apply placeholder:text-muted-foreground;
+    @apply focus:ring-2 focus:ring-accent focus:border-transparent;
+    @apply transition-all duration-150;
+  }
+
+  .section-title {
+    @apply text-3xl font-bold text-foreground mb-2;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-muted-foreground mb-8;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-accent/10 text-accent border border-accent/30;
+  }
+
+  .microbtn {
+    @apply w-10 h-10 rounded-lg flex items-center justify-center;
+    @apply bg-card border border-border text-foreground;
+    @apply hover:bg-secondary hover:border-accent transition-all;
+  }
+}
+
+/* Gradient and accent utilities */
+@layer utilities {
+  .text-gradient-cyan {
+    @apply bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent;
+  }
+
+  .glow-cyan {
+    @apply shadow-[0_0_20px_rgba(34,211,238,0.3)];
+  }
+
+  .glow-cyan-sm {
+    @apply shadow-[0_0_10px_rgba(34,211,238,0.2)];
+  }
+
+  .surface-glass {
+    @apply backdrop-blur-md bg-white/5 border border-white/10;
+  }
+
+  .fade-in {
+    @apply animate-in fade-in duration-300;
+  }
+}
+
+/* Smooth scroll and animations */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
 }
