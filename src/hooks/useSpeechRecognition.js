@@ -33,7 +33,7 @@ export const useSpeechRecognition = () => {
             try {
               recognitionRef.current.start()
             } catch (e) {
-              console.log("[v0] Recognition already started")
+              console.log(" Recognition already started")
             }
           }, 100)
         } else {
@@ -58,7 +58,7 @@ export const useSpeechRecognition = () => {
       }
 
       recognitionRef.current.onerror = (event) => {
-        console.error("[v0] Speech recognition error:", event.error)
+        console.error(" Speech recognition error:", event.error)
         if (event.error !== "no-speech") {
           setIsListening(false)
         }
