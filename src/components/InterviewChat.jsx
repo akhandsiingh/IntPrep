@@ -57,7 +57,7 @@ const InterviewChat = ({ interviewData, firstQuestion, onInterviewEnd }) => {
       if (lastMessage?.role === "assistant" && lastMessage !== lastAssistantMessageRef.current) {
         lastAssistantMessageRef.current = lastMessage
         const timeout = setTimeout(() => {
-          console.log("[v0] Auto-playing question:", lastMessage.content.substring(0, 50))
+          console.log("Auto-playing question:", lastMessage.content.substring(0, 50))
           speak(lastMessage.content, { rate: 0.9 })
         }, 500)
         return () => clearTimeout(timeout)
