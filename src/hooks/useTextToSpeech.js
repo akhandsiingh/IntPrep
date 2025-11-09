@@ -21,27 +21,27 @@ export const useTextToSpeech = () => {
     utterance.lang = options.lang || "en-US"
 
     utterance.onstart = () => {
-      console.log("[v0] TTS started")
+      console.log("TTS started")
       setIsSpeaking(true)
     }
 
     utterance.onend = () => {
-      console.log("[v0] TTS ended")
+      console.log("TTS ended")
       setIsSpeaking(false)
       utteranceRef.current = null
     }
 
     utterance.onpause = () => {
-      console.log("[v0] TTS paused")
+      console.log("TTS paused")
     }
 
     utterance.onresume = () => {
-      console.log("[v0] TTS resumed")
+      console.log("TTS resumed")
       setIsSpeaking(true)
     }
 
     utterance.onerror = (error) => {
-      console.error("[v0] Text-to-speech error:", error.error)
+      console.error(" Text-to-speech error:", error.error)
       setIsSpeaking(false)
       utteranceRef.current = null
     }
@@ -52,7 +52,7 @@ export const useTextToSpeech = () => {
 
   const stop = () => {
     if (isSupported) {
-      console.log("[v0] Stopping TTS")
+      console.log(" Stopping TTS")
       window.speechSynthesis.cancel()
       setIsSpeaking(false)
       utteranceRef.current = null
